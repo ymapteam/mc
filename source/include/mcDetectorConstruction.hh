@@ -60,7 +60,7 @@ private:
     G4LogicalVolume*   logicWorld;
     G4VPhysicalVolume* physWorld;
     
-    G4Tubs*            solidSensor;
+    G4Orb*            solidSensor;
     G4LogicalVolume*   logicSensor;
     G4VPhysicalVolume* physSensor;
     

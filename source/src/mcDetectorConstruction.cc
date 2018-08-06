@@ -29,7 +29,7 @@ mcDetectorConstruction::mcDetectorConstruction()
 WorldRadius(100*cm),
 solidWorld(0),logicWorld(0),physWorld(0),
 solidSensor(0),logicSensor(0),physSensor(0),
-magField(0),pUserLimits(0),maxStep(100.0*cm)
+magField(0),pUserLimits(0),maxStep(100.0*m)
 {
     
     // default parameter values of Sensor
@@ -73,12 +73,13 @@ G4VPhysicalVolume* mcDetectorConstruction::Construct()
                                   0);			     //copy number
     
     // Sensor
-    solidSensor = new G4Tubs("Sensor",0.0*cm,2.54*cm,18.95*cm,0,CLHEP::twopi);
+    //solidSensor = new G4Tubs("Sensor",0.0*cm,2.54*cm,18.95*cm,0,CLHEP::twopi);
+    solidSensor = new G4Orb("Sensor",WorldRadius);
     logicSensor = new G4LogicalVolume(solidSensor,sensorMaterial,"Sensor");
     
     physSensor = new G4PVPlacement(0,G4ThreeVector(),logicSensor,"Sensor",logicWorld,false,1);
-    physSensor = new G4PVPlacement(0,G4ThreeVector(20*cm,0,0),logicSensor,"Sensor",logicWorld,false,2);
-    physSensor = new G4PVPlacement(0,G4ThreeVector(40*cm,0,0),logicSensor,"Sensor",logicWorld,false,3);
+    //physSensor = new G4PVPlacement(0,G4ThreeVector(20*cm,0,0),logicSensor,"Sensor",logicWorld,false,2);
+    //physSensor = new G4PVPlacement(0,G4ThreeVector(40*cm,0,0),logicSensor,"Sensor",logicWorld,false,3);
 
     
     //------------------------------------------------
