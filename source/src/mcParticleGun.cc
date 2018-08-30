@@ -30,6 +30,8 @@ monoEnergy(1.0*keV),pMessenger(0)
 {
     pMessenger = new mcParticleGunMessenger(this);
     
+    cosThetaMax = 10./17.;
+    
     
     tableFile.open("muonTable.dat");
     double f1, f2;
@@ -124,6 +126,25 @@ void mcParticleGun::GeneratePrimaryVertex(G4Event* anEvent)
     }else if(particleFlag == fission){
         G4PrimaryParticle* particle[1]={0};
         GenerateFission(particle);
+        vertex->SetPrimary(particle[0]);
+    }else if(particleFlag == positron){
+        G4PrimaryParticle* particle[1]={0};
+        GeneratePositron(particle);
+        vertex->SetPrimary(particle[0]);
+    }else if(particleFlag == gamma2){
+        G4PrimaryParticle* particle[2]={0,0};
+        GenerateTwoGamma(particle);
+        vertex->SetPrimary(particle[0]);
+        vertex->SetPrimary(particle[1]);
+    }else if(particleFlag == gamma3){
+        G4PrimaryParticle* particle[3]={0,0,0};
+        GenerateThreeGamma(particle);
+        vertex->SetPrimary(particle[0]);
+        vertex->SetPrimary(particle[1]);
+        vertex->SetPrimary(particle[2]);
+    }else if(particleFlag == gamma1275){
+        G4PrimaryParticle* particle[1]={0};
+        GenerateGamma1275(particle);
         vertex->SetPrimary(particle[0]);
     }else{
         G4double mass = particle_definition->GetPDGMass();	
@@ -313,6 +334,137 @@ G4double mcParticleGun::LogLogInterpolatorCalculateFission(G4double x){
     }
     return value;
 }
+
+void mcParticleGun::GenerateTwoGamma(G4PrimaryParticle* gamma[2])
+{
+    G4ParticleDefinition* pD = particleTable->FindParticle("gamma");
+    gamma[0] = new G4PrimaryParticle(pD);
+    gamma[1] = new G4PrimaryParticle(pD);
+    gamma[0]->SetMass(0.);
+    gamma[1]->SetMass(0.);
+    gamma[0]->SetCharge(0.);
+    gamma[1]->SetCharge(0.);
+    gamma[0]->SetKineticEnergy(electron_mass_c2);
+    gamma[1]->SetKineticEnergy(electron_mass_c2);
+    
+    G4double px, py, pz;
+    G4double cs, sn, phi;
+    cs    =  RandFlat::shoot(-1.,1.);
+    sn    =  std::sqrt((1.0-cs)*(1.0+cs));
+    phi   =  RandFlat::shoot(0., CLHEP::twopi);
+    px    =  sn*std::cos(phi);
+    py    =  sn*std::sin(phi);
+    pz    =  cs;
+    gamma[0]->SetMomentumDirection(G4ThreeVector(px, py, pz));
+    gamma[0]->SetPolarization(G4ThreeVector(px, py, pz));
+    gamma[1]->SetMomentumDirection(G4ThreeVector(-1.*px, -1.*py, -1.*pz));
+    gamma[1]->SetPolarization(G4ThreeVector(px, py, pz));
+}
+
+void mcParticleGun::GenerateThreeGamma(G4PrimaryParticle* gamma[3])
+{
+    G4ParticleDefinition* pD = particleTable->FindParticle("gamma");
+    gamma[0] = new G4PrimaryParticle(pD);
+    gamma[1] = new G4PrimaryParticle(pD);
+    gamma[2] = new G4PrimaryParticle(pD);
+    gamma[0]->SetMass(0.);
+    gamma[1]->SetCharge(0.);
+    gamma[2]->SetCharge(0.);
+    
+    // Determine 3 gamma energy  (based on Tanioka's program)
+    const G4double eps=0.001;//w1 and w2 under line
+    const G4double Sigmax=1.0;//sigma max
+    G4double w0 = RandFlat::shoot(eps,1.0);//energy gamma[0]
+    G4double w1 = RandFlat::shoot(eps,1.0);//energy gamma[1]
+    G4double w2 = 2.0-w0-w1;                      //energy gamma[2]
+    G4double z  = RandFlat::shoot(0.,Sigmax);
+    while ( w2 >1. || z > sigma(w0,w1) ){
+        w0 = RandFlat::shoot(eps,1.0);//energy gamma[0]
+        w1 = RandFlat::shoot(eps,1.0);//energy gamma[1]
+        w2 = 2.0-w0-w1;                      //energy gamma[2]
+        z  = RandFlat::shoot(0.,Sigmax);
+    }
+    
+    G4double theta =  std::acos(RandFlat::shoot(-1.,1.));
+    G4double phi   =  RandFlat::shoot(0., CLHEP::twopi);
+    
+    G4ThreeVector pMom0(1.0, 0.0, 0.0);
+    pMom0.rotateY(theta);
+    pMom0.rotateZ(phi);
+    gamma[0]->SetKineticEnergy(electron_mass_c2*w0);
+    gamma[0]->SetMomentumDirection(pMom0);
+    
+    G4double p1 = phi1(w0,w1); // angle between gamma[0] and gamma[1]
+    G4ThreeVector pMom1(std::cos(p1), std::sin(p1), 0.0);
+    pMom1.rotateY(theta);
+    pMom1.rotateZ(phi);
+    gamma[1]->SetKineticEnergy(electron_mass_c2*w1);
+    gamma[1]->SetMomentumDirection(pMom1);
+    
+    G4double p2 = phi2(w0,w1); // angle between gamma[0] and gamma[2]
+    G4ThreeVector pMom2(std::cos(p2), std::sin(p2), 0.0);
+    pMom2.rotateY(theta);
+    pMom2.rotateZ(phi);
+    gamma[2]->SetKineticEnergy(electron_mass_c2*w2);
+    gamma[2]->SetMomentumDirection(pMom2);
+    
+    //G4cout << w0 << "( " << w0 <<","<< w0*0.<< ")" << G4endl;
+    //G4cout << w1 << "( " << w1*std::cos(p1) <<","<< w1*std::sin(p1) << ")" << G4endl;
+    //G4cout << w2 << "( " << w2*std::cos(p2) <<","<< w2*std::sin(p2) << ")" << G4endl;
+    //G4cout << "(" << theta <<","<< phi <<")"<< G4endl;
+    
+}
+
+
+void mcParticleGun::GenerateGamma1275(G4PrimaryParticle* gamma[1])
+{
+    G4ParticleDefinition* pD = particleTable->FindParticle("gamma");
+    gamma[0] = new G4PrimaryParticle(pD);
+    gamma[0]->SetMass(0.);
+    gamma[0]->SetCharge(0.);
+    gamma[0]->SetKineticEnergy(1274.6*keV);
+    G4double px, py, pz;
+    G4double cs, sn, phi;
+    cs    =  RandFlat::shoot(-1.,0.);  // only downward
+    sn    =  std::sqrt((1.0-cs)*(1.0+cs));
+    phi   =  RandFlat::shoot(0., CLHEP::twopi);
+    px    =  sn*std::cos(phi);
+    py    =  sn*std::sin(phi);
+    pz    =  cs;
+    gamma[0]->SetMomentumDirection(G4ThreeVector(px, py, pz));
+    
+}
+
+void mcParticleGun::GeneratePositron(G4PrimaryParticle* positron[1])
+{
+    G4cout <<"GeneratePositron : cosThetaMax=" << cosThetaMax << G4endl;
+    
+    G4ParticleDefinition* pD = particleTable->FindParticle("e+");
+    positron[0] = new G4PrimaryParticle(pD);
+    positron[0]->SetMass(electron_mass_c2);
+    positron[0]->SetCharge(1.);
+    G4double px, py, pz;
+    G4double cs, sn, phi;
+    cs    =  RandFlat::shoot(-1.,cosThetaMax);  // only upward
+    sn    =  std::sqrt((1.0-cs)*(1.0+cs));
+    phi   =  RandFlat::shoot(0., CLHEP::twopi);
+    px    =  sn*std::cos(phi);
+    py    =  sn*std::sin(phi);
+    pz    =  cs;
+    positron[0]->SetMomentumDirection(G4ThreeVector(px, py, -1*pz)); // up
+    
+    const G4double emax = 0.543 * MeV;
+    const G4double pmax = std::sqrt((2*electron_mass_c2+emax)*emax);
+    G4double pep=RandFlat::shoot(0.,pmax );
+    G4double prob = RandFlat::shoot(0.,1.5*beta(pmax*0.5));
+    while (  prob > beta(pep) ){
+        pep=RandFlat::shoot(0.,pmax);
+        prob = RandFlat::shoot(0.,1.5*beta(pmax*0.5));
+    }
+    positron[0]->SetKineticEnergy(std::sqrt(electron_mass_c2*electron_mass_c2+pep*pep)-electron_mass_c2); // kinetic energy
+}
+
+
 
 const G4ThreeVector& mcParticleGun::PutCentre(){
     static G4ThreeVector vPos(0.0,0.0,0.0);
