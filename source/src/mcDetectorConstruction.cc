@@ -73,12 +73,99 @@ G4VPhysicalVolume* mcDetectorConstruction::Construct()
                                   0);			     //copy number
     
     // Sensor
-    solidSensor = new G4Tubs("Sensor",0.0*cm,2.54*cm,18.95*cm,0,CLHEP::twopi);
+    G4RotationMatrix matSensor  = G4RotationMatrix();
+    solidSensor = new G4Tubs("Sensor",0.0*cm,5.*cm,10*cm,0,CLHEP::twopi);
     logicSensor = new G4LogicalVolume(solidSensor,sensorMaterial,"Sensor");
     
-    physSensor = new G4PVPlacement(0,G4ThreeVector(),logicSensor,"Sensor",logicWorld,false,1);
-    physSensor = new G4PVPlacement(0,G4ThreeVector(20*cm,0,0),logicSensor,"Sensor",logicWorld,false,2);
-    physSensor = new G4PVPlacement(0,G4ThreeVector(40*cm,0,0),logicSensor,"Sensor",logicWorld,false,3);
+    physSensor = new G4PVPlacement(0,G4ThreeVector(0,0,15*cm),logicSensor,"Sensor",logicWorld,false,1);
+    matSensor.rotateX(-135 * deg);
+    physSensor = new G4PVPlacement(G4Transform3D( matSensor,G4ThreeVector(0,15*cm,-15*cm)),logicSensor,"Sensor",logicWorld,false,2);
+    matSensor.rotateX(135 * deg);
+    matSensor.rotateX(135 * deg);
+    physSensor = new G4PVPlacement(G4Transform3D( matSensor,G4ThreeVector(0,-15*cm,-15*cm)),logicSensor,"Sensor",logicWorld,false,3);
+    
+    // source
+    const G4double sourceThickness = 5.0 * mm;
+    G4Tubs* env22NaCase = new G4Tubs( "env22NaCase", 0, 25.0/2.0 * mm, 5.0 / 2.0 * mm, 0, CLHEP::twopi);
+    G4Tubs* solid22NaCase = new G4Tubs( "solid22NaCase", 8.0 /2.0 * mm, 25.0/2.0 * mm, sourceThickness /2.0, 0.0, CLHEP::twopi);
+    G4Tubs* solid22NaCaseBottom = new G4Tubs( "solid22NaCaseBottom", 0, 8.0/2.0 * mm, 2.0 / 2.0 * mm, 0.0, CLHEP::twopi);
+    G4Tubs* solid22NaCaseWindow = new G4Tubs( "solid22NaCaseWindow", 0, 8.0/2.0 * mm, 0.1 / 2.0 * mm, 0.0, CLHEP::twopi);
+    
+    G4Material* mat_Aluminium = new G4Material("mat_Aluminium", 13.,  26.98*g/mole, 2.70*g/cm3);
+    G4Element* H  = new G4Element("Hydrogen","H" , 1., 1.01*g/mole);
+    G4Element* C  = new G4Element("Carbon"  ,"C" , 6., 12.01*g/mole);
+    G4Material* Sci =
+    new G4Material("Scintillator", 1.032*g/cm3, 2);
+    Sci->AddElement(C, 9);
+    Sci->AddElement(H, 10);
+    
+    G4Material* Vacuum =
+    new G4Material("Galactic", 1., 1.01*g/mole, universe_mean_density,
+                   kStateGas, 2.73*kelvin, 3.e-18*pascal);
+    
+    G4LogicalVolume* logenv22NaCase = new G4LogicalVolume( env22NaCase, Vacuum, "logenv22NaCase", 0,0,0,true);
+    G4LogicalVolume* logSide22NaCase = new G4LogicalVolume( solid22NaCase, Sci, "logSide22NaCase", 0,0,0,true);
+    G4LogicalVolume* logBottom22NaCase = new G4LogicalVolume( solid22NaCaseBottom, Sci, "logBottom22NaCase", 0,0,0,true);
+    G4LogicalVolume* logWindow22NaCase = new G4LogicalVolume( solid22NaCaseWindow, mat_Aluminium, "logWindow22NaCase", 0,0,0,true);
+                                                             
+    new G4PVPlacement(
+                      G4Transform3D(), //rotation and vector
+                      logSide22NaCase,    //logical volume
+                      "physEnv22NaCaseSide",//name
+                      logenv22NaCase, //mother logicall volume
+                      false,                //set to false
+                      9001,            //copy number
+                      true);            // check
+    
+    new G4PVPlacement(
+                      G4Transform3D(G4RotationMatrix(),G4ThreeVector(0,0,-1.5*mm)), //rotation and vector
+                      logBottom22NaCase,    //logical volume
+                      "physEnv22NaCaseBottom",//name
+                      logenv22NaCase, //mother logicall volume
+                      false,                //set to false
+                      9002,            //copy number
+                      true);            // check
+    
+    new G4PVPlacement(
+                      G4Transform3D(G4RotationMatrix(),G4ThreeVector(0,0,2.0*mm)), //rotation and vector
+                      logWindow22NaCase,    //logical volume
+                      "physEnv22NaCaseWindow",//name
+                      logenv22NaCase, //mother logicall volume
+                      false,                //set to false
+                      9003,            //copy number
+                      true);            // check
+    new G4PVPlacement(
+                      G4Transform3D(
+                                    G4RotationMatrix(),G4ThreeVector(0 *cm,0,0)),
+                      logenv22NaCase,
+                      "sourceCase",
+                      logicWorld,
+                      false,
+                      9004,
+                      true);
+    
+    //Gel
+    const G4double radiusSilicagel = 4.0 * mm;
+    const G4double depthSilicagel = 15.0 * mm;
+    G4Tubs* solidSilicagel = new G4Tubs("solidSilicagel"  , 0, radiusSilicagel,depthSilicagel/2.0,0, CLHEP::twopi);
+
+    G4Element* O  = new G4Element("Oxygen"  ,"O" , 8., 16.00*g/mole);
+    G4Element* Si = new G4Element("Silicon","Si" , 14., 28.09*g/mole);
+    
+    G4Material* SilicaGel = new G4Material("SilicaGel", 0.55*g/cm3, 2);
+    SilicaGel->AddElement(Si, 1);
+    SilicaGel->AddElement(O, 2);
+    G4LogicalVolume* logSilicagel = new G4LogicalVolume( solidSilicagel, SilicaGel, "logSilicagel", 0,0,0,true);
+    new G4PVPlacement(
+                      G4Transform3D(G4RotationMatrix(),G4ThreeVector(0,0,2*cm)),
+                      logSilicagel,    //logical volume
+                      "physSilicaGel",//name
+                      logicWorld, //mother logicall volume
+                      false,                //set to false
+                      3001,            //copy number
+                      true);            // check
+
+
 
     
     //------------------------------------------------
@@ -131,7 +218,6 @@ void mcDetectorConstruction::DefineMaterials()
     // z =mean number of protons;
     // iz=number of protons in an isotope;
     // n =number of nucleons in an isotope;
-    
     
     //
     // define Elements
@@ -352,7 +438,7 @@ void mcDetectorConstruction::SetSensorMaterial(G4String materialChoice)
 
 void mcDetectorConstruction::SetMagField(G4double value)
 {
-    //apply a global uniform magnetic field along Z axis
+    //apply a global uniform magnetic field along Y axis
     G4FieldManager* fieldMgr
     = G4TransportationManager::GetTransportationManager()->GetFieldManager();
     
@@ -360,7 +446,7 @@ void mcDetectorConstruction::SetMagField(G4double value)
     
     if(value!=0.){			// create a new one if non nul
         fieldValue = value;
-        magField = new G4UniformMagField(G4ThreeVector(0.,0.,fieldValue));
+        magField = new G4UniformMagField(G4ThreeVector(0.,fieldValue,0.));
         fieldMgr->SetDetectorField(magField);
         fieldMgr->CreateChordFinder(magField);
     } else {
