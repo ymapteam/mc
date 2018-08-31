@@ -34,5 +34,7 @@ Batch mode
 ## Requirement
 - Geant4.10.4
 - ROOT6
-- Qt
 
+You can run easily, without installing ROOT and Geant4 using virtual machine.
+https://wiki.kek.jp/display/geant4/Geant4+Virtual+Machine
+When you use this virtual machine, you have to do $source `>$ROOTSYS/bin/thisroot.sh` before running.
