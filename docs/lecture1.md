@@ -1,5 +1,5 @@
 # 放射線シミュレーター
 
-![Window](figs/windos.png)
+![Window](figs/window.png)
 
 ![Geometry](figs/geometry.png)
